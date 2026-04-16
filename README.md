@@ -9,8 +9,8 @@ This repository contains the evaluation harness for the **MM Goober** benchmark.
 The benchmark evaluates models across 10 diverse 24/7 live streams. It produces a **single normalized score (Max: 100)** based on the weighted average of three tasks:
 
 - **Task 1 (30%)**: Future Chat Prediction (BERTScore + ROUGE-L)
-- **Task 2 (40%)**: Past Frame Generation (LPIPS Perceptual + CLIP Semantic)
-- **Task 3 (30%)**: Stream-Switch Adaptation / ZAL Latency Mapping (0s = 100, 60s = 0)
+- **Task 2 (40%)**: Cognitive Reconstruction / Visual Inference (LLM-as-a-Judge Semantic Evaluation)
+- **Task 3 (30%)**: Stream-Switch Adaptation / Context Agility (Zero-Shot LLM Evaluation)
 
 ### Files
 - `config.py`: Contains the 10 YouTube links and benchmark tuning parameters.
@@ -37,9 +37,9 @@ class MockLLMInterface:
         # return a list of predicted chat strings
         pass
 
-    def generate_past_frames(self, history_chat: List[str]) -> List[np.ndarray]:
-        # TODO: Pass the chat to your Diffusion Model / Image Generator
-        # return a list of 10 numpy arrays (RGB images shape: H, W, 3)
+    def reconstruct_visual_state(self, history_chat: List[str]) -> str:
+        # TODO: Pass the withheld chat logs to your multimodal LLM
+        # return a detailed text description of what likely happened visually during those 10 seconds.
         pass
 ```
 
@@ -58,8 +58,8 @@ At the end of the run (which will take some time as it pulls live data from all 
 🏆 MM GOOBER BENCHMARK RESULTS 🏆
 ========================================
 Task 1 (Future Chat):     85.40 / 100
-Task 2 (Past Frames):     72.10 / 100
-Task 3 (ZAL Switch):      90.00 / 100
+Task 2 (Cognitive Recon): 72.10 / 100
+Task 3 (Context Switch):  90.00 / 100
 ----------------------------------------
 🌟 FINAL AGI SCORE:       81.46 / 100
 ========================================

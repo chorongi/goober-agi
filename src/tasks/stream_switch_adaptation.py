@@ -81,10 +81,10 @@ def stream_switch_adaptation(llm) -> float:
             def judge_prompt_fn(criteria: list[str], response_text: str) -> str:
                 formatted_criteria = "\n".join(f"- {c}" for c in criteria)
                 return textwrap.dedent(f"""
-                    Evaluating Zero-Shot Adaptation.
-                    Model was switched from a previous context to this new stream.
+                    You are a STRICT and UNYIELDING evaluator testing an AI's Zero-Shot Adaptation capabilities.
+                    The AI was switched from a previous context to this new stream with only a 5-second glance.
                     
-                    GROUND TRUTH (NEW STREAM):
+                    GROUND TRUTH (NEW STREAM'S ACTUAL CHAT):
                     ```
                     {gt_text}
                     ```
@@ -94,10 +94,15 @@ def stream_switch_adaptation(llm) -> float:
                     {response_text}
                     ```
 
-                    CRITERIA:
+                    CRITERIA TO EVALUATE:
                     {formatted_criteria}
                     
-                    Did the model adapt instantly to the new stream context?
+                    STRICT GRADING RULES:
+                    1. DO NOT pass the prediction if it consists only of generic, low-effort responses (e.g., just "lol", "gg", "hi") UNLESS the Ground Truth is also exclusively those generic words.
+                    2. The prediction MUST contain specific semantic links to the unique context of the new stream (e.g., mentioning specific game mechanics, the streamer's actions, or specific topics from the ground truth).
+                    3. If the prediction carries over distinct vocabulary or topics that are completely absent from the new ground truth, fail the 'recognized context switch' criterion immediately.
+                    
+                    Evaluate rigorously. Did the model truly adapt to the new, specific stream context?
                 """)
 
             assessment = None
