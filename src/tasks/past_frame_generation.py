@@ -1,13 +1,11 @@
 import time
-import os
 import textwrap
-import numpy as np
-import kaggle_benchmarks as kbench
-from typing import List, Tuple
+import kaggle_benchmarks as kbench  # type: ignore
 from PIL import Image
 
 from ..stream_fetcher import StreamFetcher
 from ..config import VIDEO_SOURCES
+
 
 @kbench.task(name="past_frame_generation", version=2)
 def past_frame_generation(llm) -> float:
@@ -15,7 +13,7 @@ def past_frame_generation(llm) -> float:
     Evaluates the AGI's ability to reconstruct the visual state of a 10s segment
     given the previous 30s context and ONLY the chat logs from the withheld 10s interval.
     """
-    all_videos = [vid['url'] for category in VIDEO_SOURCES.values() for vid in category]
+    all_videos = [vid["url"] for category in VIDEO_SOURCES.values() for vid in category]
     total_score = 0.0
     valid_evals = 0
 
@@ -60,7 +58,11 @@ def past_frame_generation(llm) -> float:
                     predicted_visuals = llm.prompt([prompt, *pil_frames])
                     break
                 except Exception as e:
-                    if attempt < 3 and ('503' in str(e) or '429' in str(e) or 'unavailable' in str(e).lower()):
+                    if attempt < 3 and (
+                        "503" in str(e)
+                        or "429" in str(e)
+                        or "unavailable" in str(e).lower()
+                    ):
                         print(f"LLM API unavailable ({e}), retrying in 10s...")
                         time.sleep(10)
                     else:
@@ -69,7 +71,7 @@ def past_frame_generation(llm) -> float:
             criteria = [
                 "The reconstructed descriptions align with the events described in the withheld chat.",
                 "The temporal sequence of events matches the chat's reaction timing.",
-                "The visual descriptions are plausible for the context of this specific stream."
+                "The visual descriptions are plausible for the context of this specific stream.",
             ]
 
             def judge_prompt_fn(criteria: list[str], response_text: str) -> str:
@@ -101,11 +103,15 @@ def past_frame_generation(llm) -> float:
                         criteria=criteria,
                         response_text=predicted_visuals,
                         judge_llm=kbench.judge_llm,
-                        prompt_fn=judge_prompt_fn
+                        prompt_fn=judge_prompt_fn,
                     )
                     break
                 except Exception as e:
-                    if attempt < 3 and ('503' in str(e) or '429' in str(e) or 'unavailable' in str(e).lower()):
+                    if attempt < 3 and (
+                        "503" in str(e)
+                        or "429" in str(e)
+                        or "unavailable" in str(e).lower()
+                    ):
                         print(f"Judge API unavailable ({e}), retrying in 10s...")
                         time.sleep(10)
                     else:
@@ -116,7 +122,7 @@ def past_frame_generation(llm) -> float:
                 for result in assessment.results:
                     kbench.assertions.assert_true(
                         result.passed,
-                        expectation=f"[{video_url}] Criterion '{result.criterion}' failed. Reason: {result.reason}"
+                        expectation=f"[{video_url}] Criterion '{result.criterion}' failed. Reason: {result.reason}",
                     )
                     if result.passed:
                         successes += 1
@@ -141,5 +147,6 @@ def past_frame_generation(llm) -> float:
     print(f"\nFINAL SCORE ACROSS {valid_evals} STREAMS: {final_score:.2f}")
     return float(final_score)
 
+
 if __name__ == "__main__":
-    past_frame_generation.run(kbench.llm)
+    past_frame_generation(kbench.llm)

@@ -1,0 +1,36 @@
+[project]
+name = "agi-benchmark"
+version = "0.1.0"
+description = "MM Goober AGI Benchmark Suite"
+authors = [
+    {name = "Your Name", email = "you@example.com"},
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "yt-dlp>=2023.7.6",
+    "pytchat>=0.5.5",
+    "opencv-python>=4.8.0",
+    "pillow>=10.0.0",
+    "torch>=2.0.1",
+    "torchvision>=0.15.2",
+    "transformers>=4.31.0",
+    "rouge-score>=0.1.2",
+    "bert-score>=0.3.13",
+    "lpips>=0.1.4",
+    "clip @ git+https://github.com/openai/CLIP.git",
+]
+readme = "README.md"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{include = "src"}]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.408",
+    "ruff>=0.15.11",
+]

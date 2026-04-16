@@ -20,10 +20,24 @@ The benchmark evaluates models across 10 diverse 24/7 live streams. It produces 
 
 ## Installation
 
-Ensure you have system dependencies for OpenCV, then install the Python libraries:
+Ensure you have system dependencies for OpenCV. This project uses `uv` or `poetry` for dependency management.
+
+### Using uv (Recommended)
 
 ```bash
-pip install yt-dlp opencv-python pytchat numpy pillow torch torchvision transformers rouge-score bert-score lpips git+https://github.com/openai/CLIP.git
+uv sync
+```
+
+### Using Poetry
+
+```bash
+poetry install
+```
+
+### Manual Installation (Legacy)
+
+```bash
+pip install -e .
 ```
 
 ## How to Test Your LLM

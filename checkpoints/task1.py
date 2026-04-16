@@ -4,7 +4,7 @@ import time
 import os
 import textwrap
 import numpy as np
-import kaggle_benchmarks as kbench
+import kaggle_benchmarks as kbench  # type: ignore
 from typing import List, Tuple
 from PIL import Image
 
@@ -15,17 +15,14 @@ sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
 # from stream_fetcher import StreamFetcher
 
 import os
-import time
 import tempfile
 import yt_dlp
 import pytchat
 import cv2
-import numpy as np
-from typing import List, Tuple
 
 
 class StreamFetcher:
-    def __init__(self, url: str, fps: int = 1):
+    def __init__(self, url: str, fps: float = 1.0):
         self.url = url
         self.fps = fps
         try:
@@ -50,16 +47,18 @@ class StreamFetcher:
 
         # 1. Get the direct stream URL
         ydl_opts = {"format": "best[height<=360]", "quiet": True}
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # type: ignore
             try:
                 info = ydl.extract_info(self.url, download=False)
-                stream_url = info["url"]
+                if info is None or "url" not in info:
+                    raise ValueError("Could not extract stream URL")
+                stream_url = info["url"]  # type: ignore
             except Exception as e:
                 print(f"Error extracting stream URL: {e}")
                 return [], []
 
         # 2. Open stream with OpenCV
-        cap = cv2.VideoCapture(stream_url)
+        cap = cv2.VideoCapture(str(stream_url))
 
         # 3. Poll chat and capture frames
         while time.time() - start_time < duration_sec:
@@ -74,8 +73,10 @@ class StreamFetcher:
 
             # Poll chat
             if self.chat and self.chat.is_alive():
-                for c in self.chat.get().sync_items():
-                    chat_messages.append(f"{c.author.name}: {c.message}")
+                chat_data = self.chat.get()
+                if hasattr(chat_data, "sync_items"):
+                    for c in chat_data.sync_items():  # type: ignore
+                        chat_messages.append(f"{c.author.name}: {c.message}")
 
             time.sleep(0.01)
 
@@ -83,8 +84,10 @@ class StreamFetcher:
 
         # Final chat drain
         if self.chat and self.chat.is_alive():
-            for c in self.chat.get().sync_items():
-                chat_messages.append(f"{c.author.name}: {c.message}")
+            chat_data = self.chat.get()
+            if hasattr(chat_data, "sync_items"):
+                for c in chat_data.sync_items():  # type: ignore
+                    chat_messages.append(f"{c.author.name}: {c.message}")
 
         return chat_messages, frames
 
@@ -194,6 +197,6 @@ def future_chat_prediction(llm, video_url: str) -> float:
         fetcher.stop()
 
 
-future_chat_prediction.run(
+future_chat_prediction(
     kbench.llm, video_url="https://www.youtube.com/watch?v=jfKfPfyJRdk"
 )
