@@ -1,7 +1,7 @@
 [project]
 name = "agi-benchmark"
 version = "0.1.0"
-description = "MM Goober AGI Benchmark Suite"
+description = "MM Goober: A Multi-Modal Benchmark from Live Streaming Video"
 authors = [
     {name = "Your Name", email = "you@example.com"},
 ]

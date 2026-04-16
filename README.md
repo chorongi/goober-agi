@@ -1,4 +1,4 @@
-# MM Goober AGI Benchmark Suite
+# MM Goober: A Multi-Modal Benchmark from Live Streaming Video
 
 ![MM Goober Benchmark](assets/thumbnail.png)
 

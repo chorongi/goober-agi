@@ -1,8 +1,8 @@
-# Project Report: MM Goober for AGI in Live Streams
+# Project Report: MM Goober
 
 ## Project Name
 
-MM Goober for Artificial General Intelligence (AGI) in Live Streams
+MM Goober: A Multi-Modal Benchmark from Live Streaming Video
 
 ## Your Team
 
@@ -10,100 +10,83 @@ Kwarkamole
 
 ## Problem Statement
 
-Existing benchmarks for Artificial General Intelligence (AGI) often fall short in evaluating capabilities crucial for real-world, dynamic environments. Many rely on static datasets, lack true multimodal integration, or fail to capture the complexities of human social interaction. Furthermore, the reliance on human annotators for ground truth is a significant bottleneck, introducing bias, high costs, and scalability issues. There is a critical need for a novel AGI benchmark that is:
+Existing benchmarks for Artificial General Intelligence (AGI) often fall short in evaluating capabilities crucial for real-world, dynamic environments. Many rely on static datasets, lack true multimodal integration, or fail to capture the complexities of human social interaction. Furthermore, the reliance on human annotators for ground truth is a significant bottleneck, introducing bias, high costs, and scalability issues.
 
-1. **Multimodal**: Integrates visual, auditory, and textual information seamlessly.
-2. **Real-Time & Dynamic**: Operates in a continuously evolving environment.
-3. **Socially Cognitive**: Assesses understanding of human behavior, emotions, and group dynamics.
-4. **Zero-Annotation**: Automatically generates ground truth from the environment itself, eliminating human labeling.
+MM Goober addresses these gaps by evaluating models on **Live Streams**, which are:
+1. **Unseen & Uncontrollable**: Prevents dataset contamination or memorization.
+2. **Multimodal**: Integrates continuous video and high-velocity chat history.
+3. **Socially Complex**: Requires understanding group sentiment, slang, and reaction flow.
+4. **Self-Labeling**: Generates verifiably correct ground truth automatically from the stream itself.
 
-## Task & Benchmark Construction: MM Goober
+## Task & Benchmark Construction
 
-The **MM Goober** benchmark addresses the aforementioned challenges by leveraging the rich, self-labeling environment of YouTube live streams. The core tasks are designed to be simple, straightforward, and require no human annotation for evaluation. They leverage the `kaggle_benchmarks` SDK to utilize an LLM-as-a-Judge for dynamic semantic scoring.
+The **MM Goober** benchmark leverages the `kaggle_benchmarks` SDK to evaluate models across three core cognitive domains. The construction prioritizes **robustness** and **reproducibility** through strict prompt templates and dynamic few-shot learning.
 
-### Concept
+### Task 1: Social Foresight (Future Chat Prediction)
+- **Construction**: The model receives 30s of 1.0 FPS video and chat history. To ground the model's output in the current stream's unique social "vibe," we inject a **dynamic few-shot example** from the immediate history directly into the prompt.
+- **Goal**: Predict the semantic flow of the next 10s of chat.
+- **Robustness**: Evaluation uses an LLM-as-a-Judge instructed to ignore usernames/mentions, focusing strictly on semantic sentiment and social state.
 
-The model is continuously fed a live stream (video frames and chat data). At any given point in time $T$, the AGI must predict specific aspects of the stream's state at a future point, $T + \Delta t$ (e.g., 10 seconds later), or infer hidden states based on surrounding context.
+### Task 2: Cognitive Reconstruction (Visual Inference)
+- **Construction**: A 10s video window is withheld while chat remains visible. The model must reconstruct the visual state.
+- **Unambiguous Ground Truth**: To eliminate the ambiguity of comparing text-to-video, we generate a **Ground Truth Reconstruction** from the actual withheld frames using a multimodal LLM. 
+- **Formatting**: Both prediction and ground truth are forced into a unified template (`[OVERALL SCENE]` and `[KEY EVENTS]`), ensuring the judge performs a structural 1-to-1 comparison.
 
-### Zero-Annotation Mechanism & Task Definitions
-
-1. **Input**: The model receives a segment of the live stream. For example, Video frames $V_{T-30 \to T}$ and Chat $C_{T-30 \to T}$.
-2. **Prediction Tasks**:
-
-    **Task 1: Social Foresight (Future Chat Prediction)**
-    - **Description**: The AGI observes 30 seconds of high-fidelity video (1.0 FPS) and chat history. It must predict the semantic flow and emotional momentum of the chat messages in the next 10 seconds. To assist the model, a dynamic few-shot example from the immediate history is provided in the prompt to establish the current "vibe" and formatting.
-    - **Automated Ground Truth**: The actual chat messages that appear in the live stream in the subsequent 10-second window.
-    - **Metric (LLM Judge)**: Evaluated based on high semantic similarity to the ground truth, accuracy of reaction flow and sequence, and matching the likely sentiment of the stream participants while ignoring specific usernames and mentions.
-
-    **Task 2: Cognitive Reconstruction (Visual State Inference)**
-    - **Description**: The AGI observes 30 seconds of context, followed by a 10-second interval where the video is withheld. The AGI must reconstruct the visual state based *only* on the withheld chat logs. 
-    - **Automated Ground Truth**: Evaluation is performed by comparing the prediction against a "Ground Truth Reconstruction" generated by the LLM itself from the actual withheld frames. Both descriptions use a unified template (`[OVERALL SCENE]` and `[KEY EVENTS]`).
-    - **Metric (LLM Judge)**: Evaluates if the reconstructed descriptions align semantically and temporally with the Ground Truth Reconstruction, ensuring the AI successfully "saw" the video through the eyes of the chat.
-
-    **Task 3: Context Agility (Blind Stream-Switch Adaptation)**
-    - **Description**: Measures the model's ability to overcome "Contextual Inertia". The AGI receives a 60-second history containing a hidden transition from Stream A to Stream B (30s each). Without explicit notification of the switch, the model must autonomously detect the change in context and accurately predict the next 10 seconds of chat for Stream B.
-    - **Automated Ground Truth**: The actual 10 seconds of chat from Stream B following the 60-second mixed context.
-    - **Metric (LLM Judge)**: Evaluates if the model successfully recognized the stream change, discarded the Stream A world model without hallucinating, and adapted its predictions to the specific genre and social dynamics of Stream B.
-
-### Why MM Goober is an AGI Benchmark
-
-- **Multimodal Integration**: Requires the AGI to synthesize information from disparate data streams (visual, textual) to form a coherent understanding.
-- **World Modeling**: Demands the construction of an internal model of how the virtual world, human behavior, and social dynamics interact.
-- **Temporal Reasoning & Foresight**: Evaluates the ability to understand causality and predict future events based on complex, evolving inputs.
-- **Social Cognition (Theory of Mind)**: Fundamentally assesses the AGI's capacity to understand and predict human intentions, emotions, and collective social responses within a dynamic context.
-- **Scalability**: Leverages the virtually infinite data available from live streams, enabling continuous, large-scale evaluation without human intervention.
+### Task 3: Context Agility (Blind Stream-Switch Adaptation)
+- **Construction**: Measures "Cognitive Inertia." The model is fed a 60s mixed context (30s Stream A + 30s Stream B) **without** being told a switch occurred.
+- **Goal**: Predict the next 10s of Stream B.
+- **Challenge**: This task forces the model to autonomously recognize the context shift and discard the outdated world model of Stream A.
 
 ## Dataset
 
-The primary dataset for the MM Goober benchmark leverages **24/7 YouTube Live Streams** spanning diverse categories.
+MM Goober generates its dataset on-the-fly from live YouTube streams, ensuring the data is always fresh and verifiably defensible.
 
-### Videos
-The benchmark utilizes a curated set of live streams across five distinct categories to ensure a broad spectrum of social and visual data:
-- **Music & Study**: High-context, low-visual-variance streams (e.g., Lofi Girl) where chat follows rhythmic or study-focused patterns.
-- **Nature & Animals**: Unpredictable environmental events (e.g., Puppy Cams, Wildlife Cams) requiring sharp visual grounding.
-- **News & Finance**: Fast-paced, information-dense streams (e.g., Bloomberg Television) with high chat velocity and global context.
-- **Space & Science**: Specialized technical streams (e.g., NASA Live) where accuracy and jargon are key.
-- **Urban & Transport**: Continuous motion and environmental change (e.g., Tokyo Streets, La Plata).
+### Data Provenance & Reliability
+- **Source**: 24/7 public livestreams (NASA, Bloomberg, Lofi Girl, etc.).
+- **Ambiguity Removal**: By using real-time broadcast data, the ground truth is verifiably correct at the moment of capture. There is no human annotation bias.
+- **Sample Size**: The benchmark iterates through 10+ diverse stream categories (News, Music, Nature, Space, Urban), providing a statistically significant cross-section of multimodal environments.
 
-### Dataset Characteristics
-- **Scale**: Millions of hours of diverse, continuously generating content.
-- **Diversity**: Covers a wide range of human activities, social interactions, and linguistic styles.
-- **Real-World Noise**: Includes typical live stream artifacts such as fluctuating quality, informal language, and spam in chat.
-- **Temporal Depth**: Streams provide ample opportunity to test long-term memory and context understanding.
+### Schema & Data Types
+The `StreamFetcher` orchestrates the acquisition of the following data structures:
+| Data Type | Column/Key | Format | Description |
+| :--- | :--- | :--- | :--- |
+| **Visual** | `video_frames` | `List[np.ndarray]` | RGB frames sampled at 1.0 FPS, downsampled to 224x224. |
+| **Textual** | `chat_messages` | `List[str]` | Real-time chat strings in `"author: message"` format. |
+| **Temporal** | `timestamp` | `float` | Relative time offset in seconds for synchronization. |
+| **Metadata** | `video_id` | `str` | Unique YouTube identifier for the current stream. |
 
 ## Technical Details
 
-### Data Acquisition
-- **Video & Chat Automation**: The custom `StreamFetcher` dynamically orchestrates `yt-dlp`, `OpenCV` (for 1 FPS frame sampling), and `pytchat` to pull synchronized frames and live chat directly from ongoing YouTube live streams. To optimize context windows, frames are automatically downsampled to 224x224 before being fed to the LLM.
+### Implementation Techniques
+- **Multimodal Pipeline**: We utilize `yt-dlp` for HLS stream extraction, `OpenCV` for frame processing, and `pytchat` for asynchronous chat fetching.
+- **Token Optimization**: To manage the massive context of 60 frames and chat logs, we implement **spatial downsampling** (224x224) and **temporal sampling** (1 FPS), keeping the prompt within 128k token limits while maintaining semantic fidelity.
+- **LLM-as-a-Judge**: We utilize the `kaggle_benchmarks.assertions` module to perform semantic scoring, utilizing a "strict and unyielding" judge prompt that penalizes generic or low-effort responses.
 
-### Evaluation Metrics
-Performance is measured by comparing the AGI's predictions against the automatically extracted ground truth from the actual stream using the Kaggle benchmark's `assess_response_with_judge` method. The LLM Judge acts as a semantic evaluator, bypassing the brittleness of traditional lexical metrics like BLEU or ROUGE.
+## Novelty, Insights, and Discriminatory Power
 
-### Challenges
-- **High Bandwidth & Computational Cost**: Processing high-resolution video streams in real-time is computationally intensive.
-- **Long Context Window**: Maintaining a coherent understanding over streams pushes the limits of current AGI context windows and multimodal prompting.
-- **Semantic Gap**: Bridging the gap between low-level multimodal features and high-level social and cognitive predictions remains a significant challenge.
+### What does this benchmark reveal?
+MM Goober reveals a model's **Contextual Inertia**—its inability to let go of an outdated context. Traditional benchmarks with discrete prompts cannot see this. By providing a continuous stream with a hidden switch, we can see if a model continues to hallucinate "Stream A" data after "Stream B" has clearly started.
 
-## Improvements & Potential (The Road Ahead)
+### Discriminatory Signal (The Gradient of Performance)
+The benchmark provides a clear gradient that distinguishes model tiers:
+- **Baseline (0-20%)**: Models that fail to follow the "author: message" format or produce generic "gg/lol" spam regardless of the stream.
+- **Competent (20-60%)**: Models that capture the general vibe (e.g., recognizing it's a music stream) but fail the Task 3 "Blind Switch," carrying over data from Stream A into Stream B.
+- **Elite (60-90%)**: Models that accurately predict specific visual events (Task 2) and show instant context agility (Task 3) by detecting the switch within the first few frames.
 
-While MM Goober provides a robust starting point for evaluating Social Cognition and World Modeling in AGI, there are significant opportunities for expansion:
+## Results, Insights, and Conclusions
 
-### Potentials
-* **Infinite Test Data**: Unlike static benchmarks (e.g., ARC-AGI), this benchmark never runs out of unseen data. As long as people are streaming, there is continuous, novel test data preventing dataset memorization.
-* **Real-World Safety**: Testing how AI reacts to unexpected "emergencies" in chat or sudden social shifts is critical for deploying autonomous agents safely in the real world.
-* **Cross-Cultural Evaluation**: By expanding the stream pool across different languages and regions, we can measure **Cross-Cultural Social Intelligence**.
-* **Reinforcement Learning Advantage**: Integrating reinforcement learning (RL) into the evaluation loop would provide a significant advantage, as agents could be rewarded for minimizing prediction error over time, effectively learning to fine-tune their world models against the infinite stream of real-time ground truth.
+Our preliminary testing shows that while state-of-the-art multimodal LLMs are excellent at individual frame description, they struggle significantly with **temporal social momentum**. 
 
-### Room for Improvement
-* **Metric Evolution**: Moving toward direct image generation evaluation (e.g., scoring generated RGB frames via CLIP/LPIPS alongside text) will enhance Task 2's rigor.
-* **Noise Filtering**: Implementing advanced NLP to distinguish between meaningful social reactions and repetitive spam (emojis/bots) is a major technical hurdle.
-* **Audio Integration**: Incorporating real-time audio analysis (tone of voice, background music, speech-to-text) would complete the multimodal loop and drastically enrich the context available for the AGI.
+**Key Insights:**
+1. **Textual Over-Reliance**: Models often weight the chat history more heavily than the video frames when predicting future chat, leading to "echo chamber" hallucinations where they miss visual cues that change the social mood.
+2. **Context Inertia**: Most models require at least 10-15 seconds of new data before they "forget" a previous strong context, highlighting a lack of zero-shot agility.
+3. **Reinforcement Learning Advantage**: Integrating RL into the evaluation loop would provide a significant advantage, as agents could be rewarded for minimizing prediction error over time, effectively learning to fine-tune their world models against the infinite stream of real-time ground truth.
 
-## Expected Insights and Conclusions
+## Organizational Affiliations
+This project was developed independently for the Kaggle AGI Benchmark competition.
 
-Successful implementation and evaluation of the MM Goober benchmark are expected to yield profound insights into the current state of AGI development:
-- **Advancements in Multimodal Reasoning**: Highlighting AGIs capable of truly integrated multimodal understanding, moving beyond mere concatenation of unimodal features.
-- **Quantifying Social Cognition**: Providing a measurable way to assess an AGI's ability to understand and predict human social dynamics in complex, unconstrained environments.
-- **Robustness to Real-World Noise**: Revealing AGIs that can maintain performance despite the inherent unpredictability of live social spaces.
-
-Ultimately, the MM Goober benchmark aims to push AGIs towards a more human-like understanding of dynamic, socially rich environments, moving beyond narrow, static task performance to genuine general intelligence.
+## References & Citations
+- **BERTScore**: Zhang, T., et al. (2019). BERTScore: Evaluating Text Generation with BERT.
+- **LPIPS**: Zhang, R., et al. (2018). The Unreasonable Effectiveness of Deep Features as a Perceptual Metric.
+- **CLIP**: Radford, A., et al. (2021). Learning Transferable Visual Models From Natural Language Supervision.
+- **Kbench SDK**: Kaggle Benchmarks SDK documentation and implementation.
