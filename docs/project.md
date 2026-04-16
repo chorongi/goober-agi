@@ -1,8 +1,8 @@
-# Project Report: "Stream-State" Prediction Benchmark (CMFSP) for AGI in Live Streams (Refined)
+# Project Report: MM Goober for AGI in Live Streams (Refined)
 
 ## Project Name
 
-"Stream-State" Prediction Benchmark (CMFSP) for Artificial General Intelligence (AGI) in Live Streams
+MM Goober for Artificial General Intelligence (AGI) in Live Streams
 
 ## Your Team
 
@@ -20,9 +20,9 @@ Existing benchmarks for Artificial General Intelligence (AGI) often fall short i
 
 1. **Zero-Annotation**: Automatically generates ground truth from the environment itself, eliminating human labeling.
 
-## Task & Benchmark Construction: Cross-Modal Future State Prediction (CMFSP)
+## Task & Benchmark Construction: MM Goober
 
-The **Cross-Modal Future State Prediction (CMFSP)** benchmark addresses the aforementioned challenges by leveraging the rich, self-labeling environment of YouTube live streams. The core tasks are designed to be simple, straightforward, and require no human annotation for evaluation.
+The **MM Goober** benchmark addresses the aforementioned challenges by leveraging the rich, self-labeling environment of YouTube live streams. The core tasks are designed to be simple, straightforward, and require no human annotation for evaluation.
 
 ### Concept
 
@@ -56,7 +56,7 @@ The model is continuously fed a live stream (video, audio, and chat data). At an
       - **Automated Ground Truth**: The known timestamp of the stream switch and the actual chat messages of the new stream.
       - **Metric**: **Zero-Shot Adaptation Latency (ZAL)**. The total time (in seconds) required for the AGI to reach the baseline chat prediction performance on the new, unseen context.
 
-### Why CMFSP is an AGI Benchmark
+### Why MM Goober is an AGI Benchmark
 
 - **Multimodal Integration**: Requires the AGI to synthesize information from disparate data streams (visual, auditory, textual) to form a coherent understanding.
 
@@ -70,7 +70,7 @@ The model is continuously fed a live stream (video, audio, and chat data). At an
 
 ## Dataset
 
-The primary dataset for the CMFSP benchmark will consist of **archived YouTube Live Replays**. These replays are invaluable as they include:
+The primary dataset for the MM Goober benchmark will consist of **archived YouTube Live Replays**. These replays are invaluable as they include:
 
 - **Full Video and Audio**: The complete stream content.
 
@@ -119,7 +119,7 @@ Performance will be measured by comparing the AGI's predictions against the auto
 
 ## Results, Insights, and Conclusions (Expected)
 
-Successful implementation and evaluation of the CMFSP benchmark are expected to yield profound insights into the current state and future directions of AGI development:
+Successful implementation and evaluation of the MM Goober benchmark are expected to yield profound insights into the current state and future directions of AGI development:
 
 - **Advancements in Multimodal Reasoning**: The benchmark will highlight AGIs capable of truly integrated multimodal understanding, moving beyond mere concatenation of unimodal features.
 
@@ -129,9 +129,9 @@ Successful implementation and evaluation of the CMFSP benchmark are expected to 
 
 - **Long-Term Contextual Understanding**: Identify architectures capable of maintaining and leveraging context over extended durations, a key aspect of general intelligence.
 
-- **Accelerated AGI Development**: By providing a scalable, zero-annotation benchmark, the CMFSP can significantly accelerate the iterative development and evaluation cycles for AGI systems.
+- **Accelerated AGI Development**: By providing a scalable, zero-annotation benchmark, the MM Goober can significantly accelerate the iterative development and evaluation cycles for AGI systems.
 
-Ultimately, the CMFSP aims to push AGIs towards a more human-like understanding of dynamic, socially rich environments, moving beyond narrow task performance to genuine general intelligence.
+Ultimately, the MM Goober aims to push AGIs towards a more human-like understanding of dynamic, socially rich environments, moving beyond narrow task performance to genuine general intelligence.
 
 ## Organizational Affiliations
 

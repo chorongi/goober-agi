@@ -2,11 +2,15 @@ import os
 import time
 import tempfile
 import base64
+import logging
 import yt_dlp
 import pytchat
 import cv2
 import numpy as np
 from typing import List, Tuple
+
+# Suppress pytchat internal warnings that can clutter the benchmark output
+logging.getLogger("pytchat").setLevel(logging.ERROR)
 
 try:
     from kaggle_benchmarks.content_types.videos import VideoContent
@@ -59,6 +63,16 @@ class StreamFetcher:
         """Initializes the connection to the chat stream."""
         self.chat = pytchat.create(video_id=self.video_id)
         
+    def _process_chat(self, chat_messages: List[str]):
+        """Internal helper to drain chat items and format them."""
+        if self.chat and self.chat.is_alive():
+            for c in self.chat.get().sync_items():
+                msg = c.message
+                # Handle cases where message might be a list of fragments
+                if isinstance(msg, list):
+                    msg = "".join([str(m) for m in msg])
+                chat_messages.append(f"{c.author.name}: {msg}")
+
     def get_data_window(self, duration_sec: int) -> Tuple[List[str], StreamVideoContent]:
         """
         Fetches 'duration_sec' worth of chat messages and captures an mp4 (audio+video).
@@ -90,18 +104,14 @@ class StreamFetcher:
         
         # 2. Poll chat while the video downloads
         while time.time() - start_time < duration_sec:
-            if self.chat and self.chat.is_alive():
-                for c in self.chat.get().sync_items():
-                    chat_messages.append(f"{c.author.name}: {c.message}")
+            self._process_chat(chat_messages)
             time.sleep(0.1)
 
         # Wait for the download to finalize
         process.wait(timeout=15)
         
         # Final chat drain
-        if self.chat and self.chat.is_alive():
-            for c in self.chat.get().sync_items():
-                chat_messages.append(f"{c.author.name}: {c.message}")
+        self._process_chat(chat_messages)
             
         b64_data = ""
         # 3. Extract frames for the metrics evaluator and read the mp4 data

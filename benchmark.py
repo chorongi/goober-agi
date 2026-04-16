@@ -2,9 +2,9 @@ import time
 import numpy as np
 from typing import List, Dict
 
-from config import VIDEO_SOURCES, TASK1_WINDOW_SEC, TASK2_WINDOW_SEC, WEIGHTS
-from stream_fetcher import StreamFetcher
-from metrics import Evaluator
+from src.config import VIDEO_SOURCES, TASK1_WINDOW_SEC, TASK2_WINDOW_SEC, WEIGHTS
+from src.stream_fetcher import StreamFetcher
+from src.metrics import Evaluator
 
 class MockLLMInterface:
     """Mock interface representing the AGI/LLM under test."""
@@ -92,7 +92,7 @@ class AGIBenchmark:
         return zal_score
 
     def run_full_suite(self):
-        print("Starting CMFSP Benchmark Suite...")
+        print("Starting MM Goober Benchmark Suite...")
         # Flatten video list
         all_videos = [vid for category in VIDEO_SOURCES.values() for vid in category]
         
@@ -129,7 +129,7 @@ class AGIBenchmark:
         final_score = (avg_t1 * WEIGHTS["task1"]) + (avg_t2 * WEIGHTS["task2"]) + (avg_t3 * WEIGHTS["task3"])
         
         print("\n" + "="*40)
-        print("🏆 CMFSP BENCHMARK RESULTS 🏆")
+        print("🏆 MM GOOBER BENCHMARK RESULTS 🏆")
         print("="*40)
         print(f"Task 1 (Future Chat):     {avg_t1:.2f} / 100")
         print(f"Task 2 (Past Frames):     {avg_t2:.2f} / 100")

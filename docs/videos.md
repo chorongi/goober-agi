@@ -18,3 +18,7 @@ News & Finance
 Space & Science
 - NASA Live: http://www.youtube.com/watch?v=m3kR2KK8TEs
 - Blooket Live: http://www.youtube.com/watch?v=M5OKNwczOP8
+
+Urban & Transprot
+- La Plata: "https://www.youtube.com/watch?v=X-ir2KfXMX0"
+- Tokyo Streets: "https://www.youtube.com/watch?v=L6wO1-U2RTY"

@@ -1,6 +1,8 @@
-# CMFSP AGI Benchmark Suite
+# MM Goober AGI Benchmark Suite
 
-This repository contains the evaluation harness for the **Cross-Modal Future State Prediction (CMFSP)** benchmark. It evaluates multimodal Large Language Models (LLMs) on their ability to predict, reconstruct, and adapt to live, dynamic environments (YouTube Live Streams).
+![MM Goober Benchmark](assets/thumbnail.png)
+
+This repository contains the evaluation harness for the **MM Goober** benchmark. It evaluates multimodal Large Language Models (LLMs) on their ability to predict, reconstruct, and adapt to live, dynamic environments (YouTube Live Streams).
 
 ## Architecture
 
@@ -53,7 +55,7 @@ At the end of the run (which will take some time as it pulls live data from all 
 
 ```text
 ========================================
-🏆 CMFSP BENCHMARK RESULTS 🏆
+🏆 MM GOOBER BENCHMARK RESULTS 🏆
 ========================================
 Task 1 (Future Chat):     85.40 / 100
 Task 2 (Past Frames):     72.10 / 100
