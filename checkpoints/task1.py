@@ -103,33 +103,53 @@ def future_chat_prediction(llm, video_url: str) -> float:
     using real-time data from the provided YouTube live stream.
     """
     fetcher = StreamFetcher(
-        video_url, fps=0.2
-    )  # Capturing 1 frame every 5s for context
+        video_url, fps=1.0
+    )  # 1.0 FPS for accurate visual context
     try:
         fetcher.start()
 
-        # 1. Gather 60s of recent context
-        print(f"Buffering 60s of history for {video_url}...")
-        recent_chat_list, frames = fetcher.get_data_window(duration_sec=60)
-        recent_chat_text = "\n".join(recent_chat_list)
+        # 1. Gather 30s of recent context
+        print(f"Buffering 30s of history for {video_url}...")
+        history_chat_list, raw_frames = fetcher.get_data_window(duration_sec=30)
+        
+        # Split history into Context and a small Example (last 3 messages) for few-shot
+        context_chat_list = history_chat_list[:-3] if len(history_chat_list) > 3 else history_chat_list
+        example_chat_list = history_chat_list[-3:] if len(history_chat_list) > 3 else []
+        
+        # Resize frames to 224x224 to save context tokens
+        resized_frames = []
+        for frame in raw_frames:
+            resized = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
+            resized_frames.append(resized)
+        
+        recent_chat_text = "\n".join(context_chat_list)
+        example_chat_text = "\n".join(example_chat_list)
 
-        # 2. Prompt the AGI with both chat and visual context
-        prompt = textwrap.dedent(
-            f"""
-            You are an AI expert in analyzing online communities.
-            You are observing a YouTube live stream. I have provided frames from the last 60 seconds of the stream.
+        # 2. Prompt the AGI with dynamic few-shot example and better instructions
+        prompt = textwrap.dedent(f"""
+            You are an AI expert in analyzing online communities and social dynamics.
+            You are observing a YouTube live stream. I have provided a sequence of video frames from the last 30 seconds of the stream.
 
-            --- RECENT CHAT HISTORY (Last 60 Seconds) ---
+            --- RECENT CHAT HISTORY ---
             {recent_chat_text}
             --- END CHAT HISTORY ---
 
-            Task: Predict the EXACT sequence of chat messages that will appear in the next 10 seconds.
-            Format: "username: message" (one per line).
-        """
-        )
+            --- EXAMPLE OF RECENT MESSAGES (Format Reference) ---
+            {example_chat_text}
+            --- END EXAMPLE ---
+
+            Task: Predict the most likely sequence and semantic flow of chat messages that will appear in the next 10 seconds.
+            
+            Guidelines:
+            1. Capture the tone, slang, and emotional momentum of the crowd.
+            2. Match the reaction pace (e.g., fast spam during action, slow chat during calm).
+            3. Format your response exactly as: "username: message" (one per line).
+            
+            Predict the next 10 seconds of chat:
+        """)
 
         # Convert numpy frames to PIL Images for the multimodal LLM
-        pil_frames = [Image.fromarray(f) for f in frames]
+        pil_frames = [Image.fromarray(f) for f in resized_frames]
 
         # Hand the text prompt and frames to the LLM
         predicted_chat = llm.prompt([prompt, *pil_frames])
@@ -151,6 +171,9 @@ def future_chat_prediction(llm, video_url: str) -> float:
             return textwrap.dedent(
                 f"""
                 Compare the 'Predicted Chat' against the 'Ground Truth Chat'.
+
+                NOTE: Ignore the specific usernames (e.g. "User123:") and any "@" mentions.
+                Focus strictly on the semantic content, reaction flow, and sentiment of the actual messages.
 
                 GROUND TRUTH:
                 ```

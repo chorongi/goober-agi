@@ -87,7 +87,9 @@ class AGIBenchmark:
             if score >= target_threshold:
                 recovery_windows += 1
                 if recovery_windows >= 3:  # 3 consecutive windows above threshold
-                    zal_seconds = (i - 2) * 10
+                    # If we recovered in the 3rd window (i=2), ZAL is 0s
+                    # If we recovered in the 4th window (i=3), ZAL is 10s, etc.
+                    zal_seconds = max(0, (i - 2) * 10)
                     break
             else:
                 recovery_windows = 0
