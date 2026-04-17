@@ -32,10 +32,10 @@ The **MM Goober** benchmark leverages the `kaggle_benchmarks` SDK to evaluate mo
 - **Unambiguous Ground Truth**: To eliminate the ambiguity of comparing text-to-video, we generate a **Ground Truth Reconstruction** from the actual withheld frames using a multimodal LLM. 
 - **Formatting**: Both prediction and ground truth are forced into a unified template (`[OVERALL SCENE]` and `[KEY EVENTS]`), ensuring the judge performs a structural 1-to-1 comparison.
 
-### Task 3: Context Agility (Blind Stream-Switch Adaptation)
-- **Construction**: Measures "Cognitive Inertia." The model is fed a 60s mixed context (30s Stream A + 30s Stream B) **without** being told a switch occurred.
-- **Goal**: Predict the next 10s of Stream B.
-- **Challenge**: This task forces the model to autonomously recognize the context shift and discard the outdated world model of Stream A.
+### Task 3: Context Agility (Progressive Stream-Switch Adaptation)
+- **Construction**: Measures "Cognitive Inertia." The model receives 30s of Stream A followed by an incrementally increasing window of Stream B ($t=5, 10, \dots, 30s$). This **Progressive Polling Loop** probes the model at 5-second intervals to see how much new data is required to force a context pivot.
+- **Goal**: Measure the exact **Adaptation Latency** required for the model to autonomously detect the switch and discard the outdated Stream A world model.
+- **Metric (LLM Judge)**: A linear score from 0-100 based on latency. Immediate adaptation ($t=5s$) earns 100 points, while failure to adapt within 30s earns 0 points. Evaluation ensures the model has fully adapted to the genre and dynamics of Stream B without hallucinating data from Stream A.
 
 ## Dataset
 

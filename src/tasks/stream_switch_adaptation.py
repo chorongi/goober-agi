@@ -13,7 +13,7 @@ def stream_switch_adaptation(llm) -> float:
     """
     Evaluates Zero-Shot Adaptation Latency by switching from Stream A to Stream B
     and measuring the quality of the first few predictions on the new stream.
-    Tests across all available stream pairs.
+    Tests across all available stream pairs using a progressive 5s-30s polling loop (6 steps).
     """
     all_videos = [vid["url"] for category in VIDEO_SOURCES.values() for vid in category]
     total_score = 0.0
@@ -23,7 +23,7 @@ def stream_switch_adaptation(llm) -> float:
         url_a = all_videos[i]
         url_b = all_videos[(i + 1) % len(all_videos)]
 
-        print(f"\n--- Evaluating Switch: {url_a} -> {url_b} ---")
+        print(f"\n--- Evaluating Switch Latency: {url_a} -> {url_b} ---")
         fetcher_a = StreamFetcher(url_a, fps=1.0)
         fetcher_b = StreamFetcher(url_b, fps=1.0)
 
@@ -33,15 +33,16 @@ def stream_switch_adaptation(llm) -> float:
             chat_a, video_a = fetcher_a.get_data_window(duration_sec=30)
             fetcher_a.stop()
 
-            print("Gathering Stream B context (30s glance)...")
+            print("Starting Progressive Polling on Stream B (5s steps)...")
             fetcher_b.start()
-            chat_b, video_b = fetcher_b.get_data_window(duration_sec=30)
 
-            # Combine context: 30s of A + 30s of B
-            combined_chat_list = chat_a + chat_b
-            combined_chat_text = "\n".join(combined_chat_list)
+            # Accumulated Stream B data
+            chat_b_accumulated = []
+            frames_b_accumulated = []
 
-            # Combine frames and resize to 224x224
+            adaptation_latency = 30  # Default to max penalty
+            success_at_t = False
+
             def process_frames(frames):
                 resized = []
                 for f in frames:
@@ -49,117 +50,130 @@ def stream_switch_adaptation(llm) -> float:
                     resized.append(Image.fromarray(r))
                 return resized
 
-            all_pil_frames = process_frames(video_a.frames + video_b.frames)
+            pil_frames_a = process_frames(video_a.frames)
 
-            print("Gathering ground truth for Stream B (next 10s)...")
-            gt_chat_list, _ = fetcher_b.get_data_window(duration_sec=10)
-            gt_text = "\n".join(gt_chat_list)
+            for t in range(5, 31, 5):
+                print(f"  [t={t}s] Fetching new data and probing model...")
 
-            # Note: No explicit "CONTEXT SWITCH" notification in the prompt text
-            prompt = textwrap.dedent(
-                f"""
-                You are an AI expert in real-time stream analysis.
-                I have provided a 60-second sequence of video frames and the corresponding chat history.
+                # 1. Fetch exactly 5s of new data from Stream B
+                new_chat_b, new_video_b = fetcher_b.get_data_window(duration_sec=5)
+                chat_b_accumulated.extend(new_chat_b)
+                frames_b_accumulated.extend(new_video_b.frames)
 
-                --- CHAT HISTORY (60 Seconds) ---
-                {combined_chat_text}
-                --- END CHAT ---
+                # 2. Combine 30s of A + t seconds of B
+                combined_chat_list = chat_a + chat_b_accumulated
+                combined_chat_text = "\n".join(combined_chat_list)
 
-                Task: Predict the chat messages for the NEXT 10 seconds.
-                Format: "username: message" (one per line).
+                pil_frames_b = process_frames(frames_b_accumulated)
+                all_pil_frames = pil_frames_a + pil_frames_b
 
-                Important: Ensure your prediction is grounded in the CURRENT state of the stream you are seeing at the END of the provided context.
-            """
-            )
+                # 3. Predict the NEXT 10s
+                # We gather ground truth for evaluation
+                print(f"    -> Gathering GT for t={t}s probe...")
+                gt_chat_list, _ = fetcher_b.get_data_window(duration_sec=10)
+                gt_text = "\n".join(gt_chat_list)
 
-            zero_shot_prediction = None
-            for attempt in range(4):
-                try:
-                    zero_shot_prediction = llm.prompt([prompt, *all_pil_frames])
-                    break
-                except Exception as e:
-                    if attempt < 3 and (
-                        "503" in str(e)
-                        or "429" in str(e)
-                        or "unavailable" in str(e).lower()
-                    ):
-                        print(f"LLM API unavailable ({e}), retrying in 10s...")
-                        time.sleep(10)
+                prompt = textwrap.dedent(f"""
+                    You are an AI expert in real-time stream analysis. 
+                    I have provided a sequence of video frames and the corresponding chat history.
+
+                    --- CHAT HISTORY ---
+                    {combined_chat_text}
+                    --- END CHAT ---
+
+                    Task: Predict the chat messages for the NEXT 10 seconds.
+                    Format: "username: message" (one per line).
+
+                    Important: Ensure your prediction is grounded in the CURRENT state of the stream you are seeing at the END of the provided context.
+                """)
+
+                zero_shot_prediction = None
+                for attempt in range(4):
+                    try:
+                        zero_shot_prediction = llm.prompt([prompt, *all_pil_frames])
+                        break
+                    except Exception as e:
+                        if attempt < 3 and (
+                            "503" in str(e)
+                            or "429" in str(e)
+                            or "unavailable" in str(e).lower()
+                        ):
+                            print(f"LLM API unavailable ({e}), retrying in 10s...")
+                            time.sleep(10)
+                        else:
+                            raise
+
+                criteria = [
+                    "The model successfully recognized the stream change and did not hallucinate data from Stream A.",
+                    "The prediction accurately reflects the genre, tone, and social dynamics of the SECOND stream (Stream B).",
+                    "The prediction is semantically valid for the new ground truth chat of Stream B.",
+                ]
+
+                def judge_prompt_fn(criteria: list[str], response_text: str) -> str:
+                    formatted_criteria = "\n".join(f"- {c}" for c in criteria)
+                    return textwrap.dedent(f"""
+                        Evaluate if the model has successfully adapted to Stream B after a context switch.
+                        The first 30s of context was Stream A. The last {t}s was Stream B.
+
+                        GROUND TRUTH (STREAM B ACTUAL CHAT):
+                        ```
+                        {gt_text}
+                        ```
+
+                        MODEL PREDICTION:
+                        ```
+                        {response_text}
+                        ```
+
+                        CRITERIA:
+                        {formatted_criteria}
+
+                        Has the model effectively pivoted its world model to the new stream?
+                    """)
+
+                assessment = None
+                for attempt in range(4):
+                    try:
+                        assessment = kbench.assertions.assess_response_with_judge(
+                            criteria=criteria,
+                            response_text=zero_shot_prediction,
+                            judge_llm=kbench.judge_llm,
+                            prompt_fn=judge_prompt_fn,
+                        )
+                        break
+                    except Exception as e:
+                        if attempt < 3 and (
+                            "503" in str(e)
+                            or "429" in str(e)
+                            or "unavailable" in str(e).lower()
+                        ):
+                            print(f"Judge API unavailable ({e}), retrying in 10s...")
+                            time.sleep(10)
+                        else:
+                            raise
+
+                if assessment is not None:
+                    all_passed = all(result.passed for result in assessment.results)
+                    if all_passed:
+                        print(f"    SUCCESS! Model adapted at t={t} seconds.")
+                        adaptation_latency = t
+                        success_at_t = True
+                        break
                     else:
-                        raise
+                        print(f"    FAIL. Model still in contextual inertia at t={t}s.")
+                else:
+                    print(f"    ERROR. Judge failed at t={t}s.")
 
-            criteria = [
-                "The model successfully recognized the stream change and did not hallucinate data from the first half of the context (Stream A).",
-                "The prediction accurately reflects the genre, tone, and social dynamics of the SECOND stream (Stream B).",
-                "The prediction is semantically valid for the new ground truth chat of Stream B.",
-            ]
-
-            def judge_prompt_fn(criteria: list[str], response_text: str) -> str:
-                formatted_criteria = "\n".join(f"- {c}" for c in criteria)
-                return textwrap.dedent(
-                    f"""
-                    You are a STRICT and UNYIELDING evaluator testing an AI's Zero-Shot Adaptation capabilities.
-                    The AI was switched from a previous context to this new stream with only a 5-second glance.
-
-                    GROUND TRUTH (NEW STREAM'S ACTUAL CHAT):
-                    ```
-                    {gt_text}
-                    ```
-
-                    MODEL PREDICTION (ZERO-SHOT):
-                    ```
-                    {response_text}
-                    ```
-
-                    CRITERIA TO EVALUATE:
-                    {formatted_criteria}
-
-                    STRICT GRADING RULES:
-                    1. DO NOT pass the prediction if it consists only of generic, low-effort responses (e.g., just "lol", "gg", "hi") UNLESS the Ground Truth is also exclusively those generic words.
-                    2. The prediction MUST contain specific semantic links to the unique context of the new stream (e.g., mentioning specific game mechanics, the streamer's actions, or specific topics from the ground truth).
-                    3. If the prediction carries over distinct vocabulary or topics that are completely absent from the new ground truth, fail the 'recognized context switch' criterion immediately.
-
-                    Evaluate rigorously. Did the model truly adapt to the new, specific stream context?
-                """
-                )
-
-            assessment = None
-            for attempt in range(4):
-                try:
-                    assessment = kbench.assertions.assess_response_with_judge(
-                        criteria=criteria,
-                        response_text=zero_shot_prediction,
-                        judge_llm=kbench.judge_llm,
-                        prompt_fn=judge_prompt_fn,
-                    )
-                    break
-                except Exception as e:
-                    if attempt < 3 and (
-                        "503" in str(e)
-                        or "429" in str(e)
-                        or "unavailable" in str(e).lower()
-                    ):
-                        print(f"Judge API unavailable ({e}), retrying in 10s...")
-                        time.sleep(10)
-                    else:
-                        raise
-
-            if assessment is not None:
-                successes = 0
-                for result in assessment.results:
-                    kbench.assertions.assert_true(
-                        result.passed,
-                        expectation=f"[{url_b}] Criterion '{result.criterion}' failed. Reason: {result.reason}",
-                    )
-                    if result.passed:
-                        successes += 1
-
-                score = (successes / len(criteria)) * 100.0
-                total_score += score
-                valid_evals += 1
-                print(f"Score for this switch: {score:.2f}")
+            # Score calculation: t=5s -> 100 pts, t=30s -> 0 pts
+            # Formula: 100 * (1 - (latency - 5) / 25)
+            if success_at_t:
+                score = 100.0 * (1.0 - ((adaptation_latency - 5) / 25.0))
             else:
-                print("Judge assessment failed for this switch.")
+                score = 0.0
+
+            total_score += score
+            valid_evals += 1
+            print(f"Adaptation Score for this switch: {score:.2f} (Latency: {adaptation_latency}s)")
 
         except Exception as e:
             print(f"Failed processing switch {url_a} -> {url_b}: {e}")
