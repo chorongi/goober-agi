@@ -23,9 +23,9 @@ MM Goober addresses these gaps by evaluating models on **Live Streams**, which a
 The **MM Goober** benchmark leverages the `kaggle_benchmarks` SDK to evaluate models across three core cognitive domains. The construction prioritizes **robustness** and **reproducibility** through strict prompt templates and dynamic few-shot learning.
 
 ### Task 1: Social Foresight (Future Chat Prediction)
-- **Construction**: The model receives 30s of 1.0 FPS video and chat history. To ground the model's output in the current stream's unique social "vibe," we inject a **dynamic few-shot example** from the immediate history directly into the prompt.
+- **Construction**: Evaluates predictive social cognition. The model is provided with a **density and duration guaranteed context** (buffered until at least 20 messages AND 30 seconds of video are captured). To ensure statistical stability, the benchmark performs **3 consecutive trials** per stream and averages the results.
 - **Goal**: Predict the semantic flow of the next 10s of chat.
-- **Robustness**: Evaluation uses an LLM-as-a-Judge instructed to ignore usernames/mentions, focusing strictly on semantic sentiment and social state.
+- **Robustness**: Uses a multimodal 1.0 FPS context (224x224) and dynamic few-shot prompting. Explicit logic handles empty ground truth windows to prevent scoring hallucinations.
 
 ### Task 2: Cognitive Reconstruction (Visual Inference)
 - **Construction**: A 10s video window is withheld while chat remains visible. The model must reconstruct the visual state.

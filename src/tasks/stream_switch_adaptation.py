@@ -197,4 +197,4 @@ def stream_switch_adaptation(llm) -> float:
 
 
 if __name__ == "__main__":
-    stream_switch_adaptation(kbench.llm)
+    stream_switch_adaptation.run(kbench.llm)

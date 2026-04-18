@@ -204,4 +204,4 @@ def past_frame_generation(llm) -> float:
 
 
 if __name__ == "__main__":
-    past_frame_generation(kbench.llm)
+    past_frame_generation.run(kbench.llm)
