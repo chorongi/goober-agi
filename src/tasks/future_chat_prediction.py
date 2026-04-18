@@ -28,12 +28,20 @@ def future_chat_prediction(llm) -> float:
 
             # 1. Gather 30s of recent context
             print("Buffering 30s of history...")
-            history_chat_list, history_video_content = fetcher.get_data_window(duration_sec=30)
-            
+            history_chat_list, history_video_content = fetcher.get_data_window(
+                duration_sec=30
+            )
+
             # Split history into Context and a small Example (last 3 messages) for few-shot
-            context_chat_list = history_chat_list[:-3] if len(history_chat_list) > 3 else history_chat_list
-            example_chat_list = history_chat_list[-3:] if len(history_chat_list) > 3 else []
-            
+            context_chat_list = (
+                history_chat_list[:-3]
+                if len(history_chat_list) > 3
+                else history_chat_list
+            )
+            example_chat_list = (
+                history_chat_list[-3:] if len(history_chat_list) > 3 else []
+            )
+
             # Use 30 frames (30s at 1 FPS) and resize them to save context tokens
             raw_frames = history_video_content.frames
             resized_frames = []
@@ -41,7 +49,7 @@ def future_chat_prediction(llm) -> float:
                 # Downsample to 224x224 to save significant context/tokens
                 resized = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
                 resized_frames.append(resized)
-            
+
             recent_chat_text = "\n".join(context_chat_list)
             example_chat_text = "\n".join(example_chat_list)
 

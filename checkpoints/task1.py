@@ -102,26 +102,26 @@ def future_chat_prediction(llm, video_url: str) -> float:
     Evaluates the AGI's ability to predict the next 10 seconds of chat
     using real-time data from the provided YouTube live stream.
     """
-    fetcher = StreamFetcher(
-        video_url, fps=1.0
-    )  # 1.0 FPS for accurate visual context
+    fetcher = StreamFetcher(video_url, fps=1.0)  # 1.0 FPS for accurate visual context
     try:
         fetcher.start()
 
         # 1. Gather 30s of recent context
         print(f"Buffering 30s of history for {video_url}...")
         history_chat_list, raw_frames = fetcher.get_data_window(duration_sec=30)
-        
+
         # Split history into Context and a small Example (last 3 messages) for few-shot
-        context_chat_list = history_chat_list[:-3] if len(history_chat_list) > 3 else history_chat_list
+        context_chat_list = (
+            history_chat_list[:-3] if len(history_chat_list) > 3 else history_chat_list
+        )
         example_chat_list = history_chat_list[-3:] if len(history_chat_list) > 3 else []
-        
+
         # Resize frames to 224x224 to save context tokens
         resized_frames = []
         for frame in raw_frames:
             resized = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
             resized_frames.append(resized)
-        
+
         recent_chat_text = "\n".join(context_chat_list)
         example_chat_text = "\n".join(example_chat_list)
 

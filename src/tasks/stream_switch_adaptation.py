@@ -73,8 +73,9 @@ def stream_switch_adaptation(llm) -> float:
                 gt_chat_list, _ = fetcher_b.get_data_window(duration_sec=10)
                 gt_text = "\n".join(gt_chat_list)
 
-                prompt = textwrap.dedent(f"""
-                    You are an AI expert in real-time stream analysis. 
+                prompt = textwrap.dedent(
+                    f"""
+                    You are an AI expert in real-time stream analysis.
                     I have provided a sequence of video frames and the corresponding chat history.
 
                     --- CHAT HISTORY ---
@@ -85,7 +86,8 @@ def stream_switch_adaptation(llm) -> float:
                     Format: "username: message" (one per line).
 
                     Important: Ensure your prediction is grounded in the CURRENT state of the stream you are seeing at the END of the provided context.
-                """)
+                """
+                )
 
                 zero_shot_prediction = None
                 for attempt in range(4):
@@ -111,7 +113,8 @@ def stream_switch_adaptation(llm) -> float:
 
                 def judge_prompt_fn(criteria: list[str], response_text: str) -> str:
                     formatted_criteria = "\n".join(f"- {c}" for c in criteria)
-                    return textwrap.dedent(f"""
+                    return textwrap.dedent(
+                        f"""
                         Evaluate if the model has successfully adapted to Stream B after a context switch.
                         The first 30s of context was Stream A. The last {t}s was Stream B.
 
@@ -129,7 +132,8 @@ def stream_switch_adaptation(llm) -> float:
                         {formatted_criteria}
 
                         Has the model effectively pivoted its world model to the new stream?
-                    """)
+                    """
+                    )
 
                 assessment = None
                 for attempt in range(4):
@@ -173,7 +177,9 @@ def stream_switch_adaptation(llm) -> float:
 
             total_score += score
             valid_evals += 1
-            print(f"Adaptation Score for this switch: {score:.2f} (Latency: {adaptation_latency}s)")
+            print(
+                f"Adaptation Score for this switch: {score:.2f} (Latency: {adaptation_latency}s)"
+            )
 
         except Exception as e:
             print(f"Failed processing switch {url_a} -> {url_b}: {e}")

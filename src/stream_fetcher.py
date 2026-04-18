@@ -16,6 +16,7 @@ try:
 except ImportError:
     # Fallback/mock if kaggle_benchmarks isn't installed in the local path during testing
     import abc
+
     class VideoContent(abc.ABC):  # type: ignore
         @property
         @abc.abstractmethod
@@ -26,12 +27,14 @@ except ImportError:
         def get_payload(self) -> list[dict[str, str | dict[str, str]]]:
             return [{"type": "image_url", "image_url": {"url": self.url}}]
 
+
 class StreamVideoContent(VideoContent):  # type: ignore
     """
-    A custom VideoContent implementation that serves a pre-encoded mp4 
-    (with audio and video) as a base64 Data URI, abiding by the 
+    A custom VideoContent implementation that serves a pre-encoded mp4
+    (with audio and video) as a base64 Data URI, abiding by the
     Kaggle Benchmarks API contract.
     """
+
     def __init__(self, frames: List[np.ndarray], fps: float, b64_data: str):
         self.frames = frames
         self.fps = fps

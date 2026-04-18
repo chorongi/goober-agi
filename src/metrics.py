@@ -8,6 +8,7 @@ try:
     import lpips
     import clip
     from PIL import Image
+
     METRICS_AVAILABLE = True
 except ImportError:
     print(
@@ -22,13 +23,16 @@ except ImportError:
     clip = None
     Image = None
 
+
 class Evaluator:
     def __init__(self):
         if METRICS_AVAILABLE:
             self.rouge_scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)  # type: ignore
             self.device = "cuda" if torch.cuda.is_available() else "cpu"  # type: ignore
             self.lpips_loss_fn_vgg = lpips.LPIPS(net="vgg").to(self.device)  # type: ignore
-            self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device=self.device)  # type: ignore
+            self.clip_model, self.clip_preprocess = clip.load(
+                "ViT-B/32", device=self.device
+            )  # type: ignore
 
     def evaluate_task1(self, pred_chat: List[str], true_chat: List[str]) -> float:
         """Returns a normalized score (0-100) using BERTScore and ROUGE-L."""
