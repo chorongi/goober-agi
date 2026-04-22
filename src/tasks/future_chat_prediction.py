@@ -11,8 +11,8 @@ from ..config import VIDEO_SOURCES
 @kbench.task(name="future_chat_prediction", version=2)
 def future_chat_prediction(llm) -> float:
     """
-    Evaluates the AGI's ability to predict the next 10 seconds of chat.
-    Uses dynamic buffering to ensure context density and 3-trial averaging for stability.
+    Evaluates the AGI's ability to predict the next block of chat messages.
+    Uses 0.5 FPS to reduce visual noise and 3-trial averaging for stability.
     """
     all_videos = [vid["url"] for category in VIDEO_SOURCES.values() for vid in category]
     total_score = 0.0
@@ -20,7 +20,7 @@ def future_chat_prediction(llm) -> float:
 
     for video_url in all_videos:
         print(f"\n--- Evaluating Video: {video_url} ---")
-        fetcher = StreamFetcher(video_url, fps=1.0)
+        fetcher = StreamFetcher(video_url, fps=0.5) # 0.5 FPS to focus on key visual shifts
         try:
             fetcher.start()
 
@@ -31,7 +31,6 @@ def future_chat_prediction(llm) -> float:
             
             start_buffer_time = time.time()
             while (time.time() - start_buffer_time) < 120:
-                # Get a small 10s chunk and accumulate
                 msgs, video = fetcher.get_data_window(duration_sec=10)
                 history_chat_list.extend(msgs)
                 if history_video_content is None:
@@ -42,7 +41,6 @@ def future_chat_prediction(llm) -> float:
                 elapsed = time.time() - start_buffer_time
                 print(f"  Current buffer: {len(history_chat_list)} msgs, {elapsed:.0f}s duration...")
                 
-                # Stop if we meet BOTH density and duration requirements
                 if len(history_chat_list) >= 20 and elapsed >= 30:
                     break
 
@@ -51,16 +49,14 @@ def future_chat_prediction(llm) -> float:
             for trial_idx in range(1, 4):
                 print(f"  [Trial {trial_idx}/3] Probing model...")
                 
-                # Use the most recent 30s of gathered history for the prompt
+                # Context selection
                 context_chat_list = history_chat_list[-20:] # Last 20 messages
-                # Last 30 frames
-                recent_frames = history_video_content.frames[-30:] if history_video_content else []
+                # Last 15 frames (30s at 0.5 fps)
+                recent_frames = history_video_content.frames[-15:] if history_video_content else []
                 
-                # Split for few-shot (last 3 messages as example)
-                prompt_chat_list = context_chat_list[:-3] if len(context_chat_list) > 3 else context_chat_list
-                example_chat_list = context_chat_list[-3:] if len(context_chat_list) > 3 else []
+                prompt_chat_list = context_chat_list[:-3]
+                example_chat_list = context_chat_list[-3:]
                 
-                # Resize frames to 224x224
                 resized_frames = []
                 for frame in recent_frames:
                     resized = cv2.resize(frame, (224, 224), interpolation=cv2.INTER_AREA)
@@ -69,31 +65,30 @@ def future_chat_prediction(llm) -> float:
                 recent_chat_text = "\n".join(prompt_chat_list)
                 example_chat_text = "\n".join(example_chat_list)
 
-                # Gather the Ground Truth for THIS trial (next 10s)
+                # Ground Truth (next 10s)
                 print(f"    -> Gathering Ground Truth for Trial {trial_idx}...")
                 ground_truth_list, gt_video = fetcher.get_data_window(duration_sec=10)
                 ground_truth_text = "\n".join(ground_truth_list)
 
                 prompt = textwrap.dedent(f"""
-                    You are an AI expert in analyzing online communities and social dynamics.
-                    You are observing a YouTube live stream. I have provided a sequence of video frames from the last 30 seconds of the stream.
+                    You are an AI expert in social dynamics. You are watching a YouTube live stream.
+                    I have provided a sequence of video frames from the last 30 seconds (sampled at 0.5 FPS).
 
                     --- RECENT CHAT HISTORY ---
                     {recent_chat_text}
                     --- END CHAT HISTORY ---
 
-                    --- EXAMPLE OF RECENT MESSAGES (Format Reference) ---
+                    --- EXAMPLE OF RECENT MESSAGES ---
                     {example_chat_text}
                     --- END EXAMPLE ---
 
-                    Task: Predict the most likely sequence and semantic flow of chat messages that will appear in the next 10 seconds.
+                    Task: Predict a representative block of 5-10 chat messages that would likely appear in the next 10 seconds.
                     
                     Guidelines:
                     1. Capture the tone, slang, and emotional momentum of the crowd.
-                    2. Match the reaction pace (e.g., fast spam during action, slow chat during calm).
-                    3. Format your response exactly as: "username: message" (one per line).
+                    2. Maintain the format: "username: message" (one per line).
                     
-                    Predict the next 10 seconds of chat:
+                    Predict the next block of chat:
                 """)
 
                 predicted_chat = None
@@ -108,25 +103,22 @@ def future_chat_prediction(llm) -> float:
                         else:
                             raise
 
-                # 3. Evaluation Logic with Empty-GT Handling
+                # 3. Evaluation
                 if not ground_truth_list:
-                    # If GT is empty, model scores 100 if it predicted nothing/silence, 0 otherwise
                     is_pred_empty = len(str(predicted_chat).strip()) < 5 
                     trial_score = 100.0 if is_pred_empty else 0.0
-                    print(f"    Trial {trial_idx} result: Ground Truth is EMPTY. Model Prediction Empty: {is_pred_empty}. Score: {trial_score}")
                 else:
                     criteria = [
-                        "The predicted chat has high semantic similarity to the ground truth.",
-                        "The predicted chat captures the reaction flow and sequence.",
-                        "The predicted chat matches the likely sentiment of the stream participants.",
+                        "The predicted messages accurately anticipate the topics or reactions found in the ground truth.",
+                        "The predicted sentiment matches the likely mood of the stream participants.",
+                        "The prediction successfully captures the 'social vibe' (slang, emojis, or reaction pace) of the new messages.",
                     ]
 
                     def judge_prompt_fn(criteria: list[str], response_text: str) -> str:
                         formatted_criteria = "\n".join(f"- {c}" for c in criteria)
                         return textwrap.dedent(f"""
-                            Compare the 'Predicted Chat' against the 'Ground Truth Chat'.
-                            NOTE: Ignore the specific usernames (e.g. "User123:") and any "@" mentions.
-                            Focus strictly on the semantic content, reaction flow, and sentiment of the actual messages.
+                            Evaluate the 'Predicted Chat' against the 'Ground Truth Chat'.
+                            NOTE: Ignore usernames and focuses on whether the predicted messages are a plausible representation of the ground truth content and mood.
 
                             GROUND TRUTH:
                             ```
@@ -141,7 +133,7 @@ def future_chat_prediction(llm) -> float:
                             CRITERIA:
                             {formatted_criteria}
 
-                            Evaluate if the prediction accurately anticipated the social state of the stream.
+                            Did the AI accurately anticipate the social state of the stream?
                         """)
 
                     assessment = None
@@ -170,16 +162,15 @@ def future_chat_prediction(llm) -> float:
                 stream_trial_scores.append(trial_score)
                 print(f"    Trial {trial_idx} Score: {trial_score:.2f}")
 
-                # Update history with the ground truth of the current trial for the next trial
                 history_chat_list.extend(ground_truth_list)
                 if history_video_content:
                     history_video_content.frames.extend(gt_video.frames)
 
-            # Average score for the stream
-            avg_stream_score = sum(stream_trial_scores) / len(stream_trial_scores)
-            total_score += avg_stream_score
-            valid_evals += 1
-            print(f"FINAL STABILIZED SCORE for {video_url}: {avg_stream_score:.2f}")
+            if stream_trial_scores:
+                avg_stream_score = sum(stream_trial_scores) / len(stream_trial_scores)
+                total_score += avg_stream_score
+                valid_evals += 1
+                print(f"FINAL STABILIZED SCORE: {avg_stream_score:.2f}")
 
         except Exception as e:
             print(f"Failed processing {video_url}: {e}")

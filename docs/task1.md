@@ -1,35 +1,35 @@
-# Task 1: Future Chat Prediction
+# Task 1: Social Foresight (Future Chat Prediction)
 
-**Description**: Predict the exact sequence of chat messages that will appear in the live chat during the interval $[T+1, T+10]$ seconds.
+**Description**: Predict a representative sequence of chat messages that will appear in the live chat in the immediate future.
 
-**Automated Ground Truth**: The actual chat messages that appear in the live stream between $T+1$ and $T+10$ seconds serve as the ground truth ($G$). 
+## Evaluation Methodology & Stabilization
 
-## Evaluation Metrics & Stabilization
+To ensure a high-quality, statistically stable signal and a balanced level of difficulty, we implement several stabilization and noise-reduction techniques:
 
-To effectively measure the quality of chat predictions and ensure high reproducibility, we implement two primary stabilization techniques:
+1. **Reduced Visual Noise (0.5 FPS)**:
+   - Video frames are sampled at **0.5 FPS** (1 frame every 2 seconds).
+   - This provides the model with clear temporal context of major visual shifts while minimizing token noise and prevent model distraction.
 
-1. **Context Density & Temporal Guarantee (Dynamic Buffering)**:
-   - The benchmark buffers the stream until it meets **BOTH** of the following requirements (capped at 120 seconds):
+2. **Context Density & Temporal Guarantee**:
+   - The benchmark buffers the stream until it meets **BOTH** of the following requirements:
      - At least **20 chat messages** have been captured.
      - At least **30 seconds** of video history has been captured.
-   - This ensures the LLM always has a statistically significant visual and semantic baseline, preventing context truncation in high-velocity streams.
+   - This ensures the LLM always has a sufficient semantic and visual baseline.
 
-2. **Statistical Smoothing (3-Trial Averaging)**:
-   - For every stream, the benchmark performs **3 consecutive prediction trials**.
-   - The final score for the stream is the average of these 3 trials.
-   - This averages out momentary anomalies (e.g., sudden bot spam or random silence) that could otherwise cause high variance.
+3. **Representative Block Prediction**:
+   - Instead of requiring an exact line-by-line prediction for a fixed time window, the model is asked to predict a **representative block of 5-10 messages**.
+   - This allows the model to capture the *sentiment*, *vibe*, and *topics* of the crowd without being penalized for the chaotic timing of live chat.
 
-3. **Empty-GT Handling**:
-   - If the ground truth window is naturally empty (no one chatted):
-     - If the model correctly predicts silence/emptiness: **Score = 100**.
-     - If the model predicts an active chat: **Score = 0**.
+4. **Statistical Smoothing (3-Trial Averaging)**:
+   - The benchmark performs **3 consecutive prediction trials** per stream.
+   - The final score is the average of these trials, reducing the impact of random anomalies.
 
-## Scoring (LLM-as-a-Judge)
+## Evaluation Metrics (LLM-as-a-Judge)
 
-The prediction is evaluated using the `kaggle_benchmarks` judge against three criteria:
-1. **Semantic Similarity**: High alignment with the ground truth intent.
-2. **Reaction Flow**: Captured the correct sequence of reactions.
-3. **Sentiment Match**: Matched the likely sentiment of the participants.
+The Judge LLM evaluates the prediction based on:
+1. **Topic Anticipation**: Alignment with the actual content of the ground truth.
+2. **Sentiment Alignment**: Matching the likely mood of the participants.
+3. **Social Vibe**: Capturing the specific slang, reaction pace, and social dynamics.
 
 ### Implementation Note
-For the final benchmark score, the weighted average across all 10+ streams is calculated, providing a stable and reliable metric of social foresight.
+By focusing on semantic and social relevance rather than temporal rigidity, Task 1 provides a discriminative signal of an AGI's capacity for social foresight.

@@ -1,22 +1,36 @@
-# Task 2: Past Frame Generation (Visual State Description from Chat)
+# Task 2: Cognitive Reconstruction (Visual Inference)
 
-**Description**: The AGI must reconstruct the visual state of a withheld 10-second video segment by providing a detailed text description, using *only* the accumulated live chat from that same interval. This tests the model's ability to translate human social signals (reactions, descriptions, commands) back into the visual "world state" that triggered them.
+**Description**: The AGI observes a continuous segment of video and chat. Then, for a 10-second interval, the video feed is withheld—it only receives the live chat logs. The AGI must reconstruct the visual state based *only* on the withheld chat logs.
 
-## Precise Execution Steps
+## Evaluation Methodology & Stabilization
 
-1. **Context Initialization**: The AGI is fed the stream (Video + Chat) up to time $T$.
-2. **Visual Blackout**: From $T$ to $T+10$, the video feed is completely withheld. The AGI only receives the stream of chat messages $C_{T \to T+10}$.
-3. **Internal Simulation**: The AGI correlates the specific sentiment, keywords, and frequency of the chat messages with its learned internal model of the stream (e.g., recognizing that "F in the chat" usually follows a character death or a failure).
-4. **Textual Generation**: The AGI generates a text description predicting the visual state for the 10 withheld frames (one for each second).
+To ensure a high-quality, statistically stable signal of the model's visual reasoning, we implement several stabilization techniques:
 
-## Evaluation Metrics
+1. **Context Density & Temporal Guarantee**:
+   - The benchmark buffers the initial context until it meet **BOTH** of the following requirements:
+     - At least **20 chat messages** have been captured.
+     - At least **30 seconds** of video history has been captured.
+   - This ensures the model has a sufficient understanding of the environment before being asked to infer hidden states.
 
-To pass this task, the generated text description is evaluated using an **LLM-as-a-Judge** (`kbench.assertions.assess_response_with_judge`). The Judge compares the predicted visual description against the withheld chat context to determine if the AI successfully "saw" the video through the eyes of the chat.
+2. **Ground Truth Reconstruction**:
+   - To eliminate the ambiguity of comparing model text to raw video, the benchmark uses the multimodal LLM itself to generate a **Ground Truth Reconstruction** from the actual withheld frames.
+   - Both the GT and the model's prediction are forced into a unified template:
+     ```
+     [OVERALL SCENE]: (Environment summary)
+     [KEY EVENTS]: (Specific actions/movements)
+     ```
 
-The evaluation criteria are:
-1. **Semantic Alignment**: The reconstructed descriptions align with the events described in the withheld chat.
-2. **Temporal Consistency**: The temporal sequence of events matches the chat's reaction timing.
-3. **Contextual Plausibility**: The visual descriptions are plausible for the context of this specific stream.
+3. **Statistical Smoothing (3-Trial Averaging)**:
+   - For every stream, the benchmark performs **3 consecutive prediction trials**.
+   - After each trial, the history is updated with the true frames and chat of the previous segment.
+   - The final score for the stream is the average of these 3 trials, reducing the impact of momentary visual or social lulls.
 
-## Implementation Note
-A successful AGI should not only produce a plausible description but one that captures the *specific event* described in the chat (e.g., if the chat says "GG", the text description should likely mention a 'Game Over' screen or a victory pose).
+## Evaluation Metrics (LLM-as-a-Judge)
+
+The Judge LLM evaluates the `Predicted Reconstruction` against the `Ground Truth Reconstruction` based on:
+1. **Scene Accuracy**: Alignment with the ground truth environment.
+2. **Event Alignment**: Matching the specific actions captured in the frames.
+3. **Logical Linking**: Demonstrating a clear link between chat reactions and visual events.
+
+### Implementation Note
+By using an apples-to-apples text comparison and averaging across multiple trials, Task 2 provides a robust measure of an AGI's ability to "see" through the eyes of a crowd.
